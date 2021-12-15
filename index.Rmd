@@ -15,76 +15,224 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
 tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+
+library(fivethirtyeight)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
 ```
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Sarah Lucas sml3855
 
 #### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+The datasets for this project were state-wide datasets compiled by FiveThirtyEight. The 'hate_crimes' dataset includes variables thought to influence hate crime incidence, namely socioeconomic factors like higher education, diversity, income inequality, economic measures, etc. The 'bad_drivers' dataset takes a look at the number of fatal car crashes by state, causes behind the fatal car crashes, insurance premiums, and insurance losses. I was interested in these datasets because both of these topics are relevant to me and I thought there was a good chance for relationships to emerge by state -- there is prior research on income inequality and level of higher education in relation to violence like hate crimes. I also liked that there was a plethora of numeric variables in each dataset for manipulation.
 
 ```{R}
-# read your datasets in here, e.g., with read_csv()
+
+hate_crimes <- hate_crimes
+head(hate_crimes)
+bad_drivers <- bad_drivers
+head(bad_drivers)
 
 ```
 
 #### Tidying: Reshaping
 
-If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
+The datasets were already tidy, so I chose to reshape 'bad_drivers' by grouping together data from two forms of accidents resulting from actual law violations: drivers under the influence of alcohol ('perc_alcohol') and drivers who broke the speed limit ('perc_speeding'). I then reshaped the data to separate out these accidents by speeding and alcohol use.
 
 ```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
+
+#Untidy by grouping together accidents from law violations 
+bad_drivers %>% pivot_longer(3:4, names_to = "law_violation", values_to = "perc") -> bad_drivers_long
+bad_drivers_long
+#Retidy by separating out accidents by speeding and alcohol use
+bad_drivers_long %>% pivot_wider(names_from = "law_violation", values_from = "perc")
+
+
+
 ```
 
     
 #### Joining/Merging
 
 ```{R}
-# your joining code
-
-# your joining code
+full_join(hate_crimes, bad_drivers, by = "state") -> comb_data
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+
+A full join was performed using the common variable 'state'. The original 'hate_crimes' dataset had 51 observations with 51 distinct IDs. The original 'bad_drivers' dataset had 51 observations with 51 distinct IDs. Both datasets had 51 IDs to account for the fact that they are culled from state data. As such, there were no unique IDs in either dataset nor IDs that appeared in only one dataset -- the datasets had all IDs in common. I chose this particular join because I wanted to retain all data from both datasets. No rows were dropped in the joined dataset.
+
 
 ####  Wrangling
 
-```{R}
-# your wrangling code
 
-# your wrangling code
+```{r}
 
-# your wrangling code
+comb_data %>% select(-state_abbrev) -> comb_data 
+
+comb_data %>% summarize(mean_num_drivers =mean(num_drivers,na.rm=T),
+                           sd_num_drivers=sd(num_drivers,na.rm=T),
+                            med_num_drivers=median(num_drivers,na.rm=T),
+                            min_num_drivers=min(num_drivers,na.rm=T),
+                              max_num_drivers=max(num_drivers,na.rm=T))
+
+comb_data %>% arrange(desc(num_drivers))
+
 ```
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
 
+```{r}
+comb_data %>% filter(state == "North Dakota") 
+comb_data %>% group_by(state) %>% arrange(perc_not_distracted)
+```
+
+
+```{R}
+#Create new variable combining two original variables 
+comb_data %>% mutate(perc_irresponsible = perc_speeding + perc_alcohol) -> comb_data
+comb_data %>% arrange(desc(perc_irresponsible))
+```
+
+
+
+```{r}
+comb_data %>% summarize(mean_perc_speeding=mean(perc_speeding,na.rm=T),
+                           sd_perc_speeding=sd(perc_speeding,na.rm=T),
+                            med_perc_speeding=median(perc_speeding,na.rm=T),
+                            min_perc_speeding=min(perc_speeding,na.rm=T),
+                              max_perc_speeding=max(perc_speeding,na.rm=T))
+```
+
+```{r}
+comb_data %>% summarize(mean_perc_alcohol=mean(perc_alcohol,na.rm=T),
+                           sd_perc_alcohol=sd(perc_alcohol,na.rm=T),
+                            med_perc_alcohol=median(perc_alcohol,na.rm=T),
+                            min_perc_alcohol=min(perc_alcohol,na.rm=T),
+                              max_perc_alcohol=max(perc_alcohol,na.rm=T))
+```
+
+
+```{r}
+
+comb_data %>% summarize(mean_insurance_premiums=mean(insurance_premiums,na.rm=T),
+                           sd_insurance_premiums=sd(insurance_premiums, na.rm=T),
+                            med_insurance_premiums=median(insurance_premiums,na.rm=T),
+                            min_insurance_premiums=min(insurance_premiums,na.rm=T),
+                              max_insurance_premiums=max(insurance_premiums,na.rm=T)) 
+
+comb_data %>% filter(insurance_premiums == 1301.52) #find state with maximum insurance premium 
+```
+
+
+```{r}
+comb_data %>% summarize(mean_gini_index=mean(gini_index,na.rm=T),
+                           sd_gini_index=sd(gini_index, na.rm=T),
+                            med_gini_index=median(gini_index,na.rm=T),
+                            min_gini_index=min(gini_index,na.rm=T),
+                              max_gini_index=max(gini_index,na.rm=T))
+```
+```{r}
+
+comb_data %>% summarize(mean_avg_hatecrimes_per_100k_fbi=mean(avg_hatecrimes_per_100k_fbi,na.rm=T),
+                           sd_avg_hatecrimes_per_100k_fbi=sd(avg_hatecrimes_per_100k_fbi, na.rm=T),
+                            med_avg_hatecrimes_per_100k_fbi=median(avg_hatecrimes_per_100k_fbi,na.rm=T),
+                            min_avg_hatecrimes_per_100k_fbi=min(avg_hatecrimes_per_100k_fbi,na.rm=T),
+                              max_avg_hatecrimes_per_100k_fbi=max(avg_hatecrimes_per_100k_fbi,na.rm=T))
+
+```
+
+```{r}
+#Create categorical variable
+comb_data <- comb_data %>% mutate(gini_index_rank = case_when(gini_index > 0.5 ~ "high",
+                                            gini_index <= 0.5 & 0.4 <= gini_index ~ "med",
+                                            gini_index < 0.4 ~ "low")) 
+comb_data
+#Report counts of created categorical variable
+comb_data %>% group_by(gini_index_rank) %>% summarize(n())
+
+```
+
+
+
+```{r}
+#Stringr
+comb_data %>% distinct(state) %>% slice_min(str_length(state))
+comb_data %>% distinct(state) %>% summarize(num_a = sum(str_detect(state, "a")))
+```
+
+
+```{r}
+#Define Percent irresponsible function
+perc_irresponsible_conv <- function(perc_irresponsible) {
+    perc_irresponsible_conv <- (perc_irresponsible/100)
+    return(perc_irresponsible_conv)
+}
+comb_data %>% mutate(perc_irresponsible_dec = perc_irresponsible_conv(perc_irresponsible))
+```
+```{r}
+# number of NAs for each variable
+comb_data %>% summarize_all(function(x)sum(is.na(x)))
+```
+States with the Top 5 Highest Premiums 
+
+```{r}
+
+comb_data %>% select(1, 18) %>% slice_max(insurance_premiums, n = 5)
+
+
+comb_data %>% filter(state %in% c("New Jersey", "Louisiana", "District of Columbia", "New York", "Florida")) %>% group_by(state) %>% na.omit() %>% summarize(mean_insurance_premiums=mean(insurance_premiums,na.rm=T),  
+                                                                                                        med_insurance_premiums=median(insurance_premiums,na.rm=T),                                                         min_insurance_premiums=min(insurance_premiums,na.rm=T),
+max_insurance_premiums=max(insurance_premiums,na.rm=T))  %>% arrange(mean_insurance_premiums) %>% 
+kable(digits = 3, align = "c")
+```
+
+I used 'select' to get rid of 'state_abbrev' from the original joined dataset, since its function is redundant with the 'state' variable. Next, I calculated summary statistics on the number of drivers in fatal collisions by state. Using 'arange', I found that the state with the highest number of drivers involved in fatal accidents was North Dakota. At 23.9 drivers involved in fatal collisions per billion miles travelled, North Dakota stands well above the national average of 15.7. But how culpable are the the drivers in states with high numbers of crashes? Let's take North Dakota again using 'filter'. I created a function, 'perc_irresponsible_conv' to convert the percent of drivers engaging in irresponsible behavior to a decimal value, which I later used in one of my plots. I found that in spite of the high number of crashes compared to the national average, only 1% of crashes in North Dakota were due to distracted driving. North Dakota's percentage of undistracted drivers in fatal collisions is the second-highest of the dataset (tied with Ohio and behind D.C.). By contrast, 90% of fatal crashes in Mississippi resulted from distracted driving. Another way to think about bad drivers is by looking at insurance premium prices. By this measure, New Jersey has the worst drivers, with insurance premiums of $1302 (verified using 'filter'). This is well above the national average of $887. I then collected summary statistics from the variables capturing illegal driving, 'perc_alcohol' and 'perc_speeding.' 
+
+I'm interested in comparing the Gini Index values (a measure of income inequality) and the hate crime rate per state, so summary statistics were collected on these variables as well. I created a categorical variable, 'gini index rank', to rank the Gini indexes between states using 'mutate' and 'case_when'. The Gini index is a measure of income inequality. Per the UN guidelines, a Gini index of 0.4-0.5 represents a big income gap, and above 0.5 represents a severe income gap.  0.3-0.4 Gini index values imply adequate equality. I found there were zero Gini indexes that fell into that low category (index < 0.4). 49 states fell into the medium category (0.4-0.5). D.C. was the only state with a Gini index greater than 0.5, making it the highest in terms of income inequality. I used stringr to find the states with the minimum character length -- these were Ohio, Utah, and Iowa. I used str_detect to report the number of states containing the letter 'a'. 37 states contained the letter 'a'. The table above relates summary statistics for insurance premiums in the 5 most costly states. 
 
 #### Visualizing
 
 ```{R}
-# your plot 1
+comb_data %>%  ggplot(aes(x = gini_index, y = avg_hatecrimes_per_100k_fbi)) + 
+  geom_point(size=2) + 
+  geom_jitter() + 
+  geom_smooth(alpha=.5,color="blue") +
+  labs(title="Income Inequality vs. Hate Crimes") + 
+  xlab("Gini Index") + scale_x_continuous() + 
+  ylab("Number of Hate Crimes Per 100K") + 
+  scale_y_continuous(lim = c(0,11)) + 
+  theme_light()
 ```
 
-Your discussion of plot 1
+In Plot #1, I graphed Gini Index values per state versus the number of hate crimes per 100,000 people. There is a weak positive correlation between these two variables -- as Gini Index values increase (indicating greater inequality), the number of hate crimes recorded also increased. There was also one clear outlier, captured earlier in the categorical variable 'gini_index_rank' as the only 'high' Gini Index value (above 0.5). This data point corresponds to D.C. This observation does not imply causation between the two variables. This finding is in line with prior research on crime that posits income inequality as a contributor towards violence.  
 
 ```{R}
-# your plot 2
+comb_data %>% mutate(perc_irr_conv = perc_irresponsible/100) %>% ggplot(aes(state)) + 
+  geom_bar(aes(y = perc_irr_conv, fill = state), stat="summary", fun=mean) + 
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) + 
+  labs(title="Fatal Accidents with Illegal Behavior Per State") + 
+  xlab("State") + 
+  ylab("Percent Irresponsible") +
+  scale_y_continuous(labels=scales::percent) +
+  theme(axis.text.x = element_text(angle=45, hjust=1), legend.position="none") 
 ```
 
-Your discussion of plot 2
+In Plot #2, I returned to my perc_irresponsible variable and graphed it by state. Illegal activity by drinking or speeding is one way to quantify bad driving. The graph shows that the percentage of fatal crashes caused by illegal driving habits does decently fluctuate between states. For the majority of states, the percentage of fatal crashes caused by irresponsible behavior was greater than 50%. Hawaii stands out clearly from other states, with the percentage of fatal crashes caused by irresponsible behavior of 95%. 
 
 ```{R}
-# your plot 3
+comb_data %>% ggplot(aes(share_white_poverty,share_vote_trump)) + 
+  geom_point(aes(size = avg_hatecrimes_per_100k_fbi)) + 
+  labs(title="Examining Disaffected White Voters, Trump, and Hate Crimes") + 
+  xlab("Share of Trump Votes") + scale_x_continuous() + 
+  scale_x_continuous() +
+  ylab("Share of White Residents in Poverty") + 
+  theme_light()
 ```
 
-Your discussion of plot 3
-
-#### Concluding Remarks
-
-If any!
+In Plot #3, I examined the relationship between a state's share of the population that voted for Trump and the share of white residents in poverty. I was interested in examining this relationship because Trump's stereotypical base is white working-class voters. The data point size was changed based on the average number of hate crimes per state per 100k people. There appears to be a weak positive correlation between the share of Trump votes and the share of white residents in poverty. I don't see much of a mediating impact of hate crime incidence on the data: The outlier on the lower end of the x-axis has low values for share of trump votes and share of white residents in poverty yet the highest possible grouping of hate crimes, 10.0/100,000 people.   
 
 
 
